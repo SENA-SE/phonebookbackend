@@ -1,0 +1,43 @@
+name: Release DevOps with Docker # Name of the workflow
+
+# On a push to the branch named master
+on:
+  push:
+    branches:
+      - main
+
+# Job called build runs-on ubuntu-latest
+jobs:
+
+  publish-docker-hub:
+    name: Publish image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+    # Checkout to the repository
+    - uses: actions/checkout@v4
+
+    - uses: docker/setup-buildx-action@v2
+
+    # We need to login so we can later push the image without issues.
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    # Builds devopsdockeruh/docker-hy.github.io
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: tartarsauce/3.2:latest
+  
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
